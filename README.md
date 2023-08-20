@@ -1,8 +1,6 @@
-TODO: Review this README and add or modify as necessary.
+## SPF Value Management for octoDNS
 
-## SPF Value Management provider for octoDNS
-
-An [octoDNS](https://github.com/octodns/octodns/) provider that targets [SPF Value Management](https://github.com/octodns/octodns-spf).
+An [octoDNS](https://github.com/octodns/octodns/) provider that supports managing SPF values in TXT records.
 
 ### Installation
 
@@ -45,14 +43,12 @@ providers:
 
 #### Records
 
-TODO: All octoDNS record types are supported.
+TXT
 
 #### Dynamic
 
-TODO: SpfSource does not support dynamic records.
+SpfSource does not support dynamic records.
 
 ### Development
 
 See the [/script/](/script/) directory for some tools to help with the development process. They generally follow the [Script to rule them all](https://github.com/github/scripts-to-rule-them-all) pattern. Most useful is `./script/bootstrap` which will create a venv and install both the runtime and development related requirements. It will also hook up a pre-commit hook that covers most of what's run by CI.
-
-TODO: any provider specific setup, a docker compose to run things locally etc?
