@@ -33,12 +33,7 @@ def version():
 
 description, long_description = descriptions()
 
-tests_require = (
-    'pytest',
-    'pytest-cov',
-    'pytest-network',
-    # TODO: other test-time requirements
-)
+tests_require = ('pytest', 'pytest-cov', 'pytest-network')
 
 setup(
     author='Ross McFarland',
@@ -60,10 +55,7 @@ setup(
         ),
         'test': tests_require,
     },
-    install_requires=(
-        'octodns>=0.9.14',
-        # TODO: other requirements
-    ),
+    install_requires=('octodns>=0.9.14',),
     license='MIT',
     long_description=long_description,
     long_description_content_type='text/markdown',

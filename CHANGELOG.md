@@ -1,11 +1,3 @@
-## TODO: v0.0.1 - 20??-??-?? - Moving
+## v0.0.1 - 2023-08-21 - Initial (Alpha) Release
 
-#### Nothworthy Changes
-
-* Initial extraction of SpfSource from octoDNS core
-
-TODO: anything else
-
-#### Stuff
-
-TODO: anything else
+It exists
