@@ -311,7 +311,6 @@ class TestSpfSource(TestCase):
 
     zone = Zone('unit.tests.', [])
     no_mail = SpfSource('no-mail')
-    allow_merge = SpfSource('no-merge', merging_enabled=True)
     has_a = SpfSource(
         'a-records', a_records=('a.unit.tests',), merging_enabled=True
     )
@@ -332,7 +331,7 @@ class TestSpfSource(TestCase):
     has_exists = SpfSource(
         'exists', exists=('%{ir}.%{l1r+-}._spf.%{d}',), merging_enabled=True
     )
-    soft_fail = SpfSource('soft-fail', merging_enabled=True)
+    soft_fail = SpfSource('soft-fail', soft_fail=True, merging_enabled=True)
     has_ttl = SpfSource('ttl', ttl=42)
 
     def test_record_details(self):
@@ -459,3 +458,74 @@ class TestSpfSource(TestCase):
             str(exception),
         )
         self.assertEqual(apex_spf, exception.record)
+
+    def test_merging(self):
+        zone = self.zone.copy()
+
+        # start with no mail as the base, will create the TXT
+        self.no_mail.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual('v=spf1 -all', spf.values[0])
+
+        # add an a
+        self.has_a.populate(zone)
+        # existing record wasn't modified
+        self.assertEqual('v=spf1 -all', spf.values[0])
+        # there's a copy that was
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual('v=spf1 a:a.unit.tests -all', spf.values[0])
+
+        # add a mx
+        self.has_mx.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual(
+            'v=spf1 a:a.unit.tests mx:mx.unit.tests -all', spf.values[0]
+        )
+
+        # add a ip6, before ip4
+        self.has_ip6.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual(
+            'v=spf1 a:a.unit.tests mx:mx.unit.tests ip6:2606::1 -all',
+            spf.values[0],
+        )
+
+        # add a ip4, after ip6, make sure ip4 still comes first
+        self.has_ip4.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual(
+            'v=spf1 a:a.unit.tests mx:mx.unit.tests ip4:1.2.3.4 ip4:5.6.7.8 ip6:2606::1 -all',
+            spf.values[0],
+        )
+
+        # add an include
+        self.has_includes.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual(
+            'v=spf1 a:a.unit.tests mx:mx.unit.tests ip4:1.2.3.4 ip4:5.6.7.8 ip6:2606::1 include:include.unit.tests -all',
+            spf.values[0],
+        )
+
+        # add an exists
+        self.has_exists.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual(
+            'v=spf1 a:a.unit.tests mx:mx.unit.tests ip4:1.2.3.4 ip4:5.6.7.8 ip6:2606::1 include:include.unit.tests exists:%{ir}.%{l1r+-}._spf.%{d} -all',
+            spf.values[0],
+        )
+
+        # add a soft-fail
+        self.soft_fail.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual(
+            'v=spf1 a:a.unit.tests mx:mx.unit.tests ip4:1.2.3.4 ip4:5.6.7.8 ip6:2606::1 include:include.unit.tests exists:%{ir}.%{l1r+-}._spf.%{d} ~all',
+            spf.values[0],
+        )
