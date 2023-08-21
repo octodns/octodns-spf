@@ -12,7 +12,7 @@ __VERSION__ = '0.0.1'
 
 
 class SpfException(RecordException):
-    def __init__(self, msg, record):
+    def __init__(self, msg, record=None):
         context = getattr(record, 'context', None)
         if context:
             msg += f', from {context}'
@@ -36,7 +36,7 @@ def _parse_spf(value):
         if 'all' in piece:
             soft_fail = piece.startswith('~')
             continue
-        mechinism, v = piece.split(':')
+        mechinism, v = piece.split(':', 1)
         if mechinism == 'a':
             a_records.append(v)
         elif mechinism == 'mx':
@@ -49,6 +49,8 @@ def _parse_spf(value):
             includes.append(v)
         elif mechinism == 'exists':
             exists.append(v)
+        else:
+            raise SpfException(f'Unrecognized SPF mechinism: "{mechinism}"')
 
     return (
         a_records,
@@ -94,12 +96,13 @@ def _build_spf(
             buf.write(include)
     if exists:
         for exist in exists:
-            buf.write(' exist:')
+            buf.write(' exists:')
             buf.write(exist)
-    if soft_fail:
-        buf.write(' ~all')
-    else:
-        buf.write(' -all')
+    if soft_fail is not None:
+        if soft_fail:
+            buf.write(' ~all')
+        else:
+            buf.write(' -all')
     return buf.getvalue()
 
 
@@ -129,7 +132,12 @@ def _merge_spf(
     parsed_ip6_addresses.extend(ip6_addresses)
     parsed_includes.extend(includes)
     parsed_exists.extend(exists)
-    parsed_soft_fail |= soft_fail
+    if parsed_soft_fail is None:
+        # just use passed
+        parsed_soft_fail = soft_fail
+    else:
+        # merge them, if either is true it's soft
+        parsed_soft_fail |= soft_fail
 
     return _build_spf(
         parsed_a_records,
@@ -180,7 +188,6 @@ class SpfSource(BaseSource):
         super().__init__(id)
         self.a_records = a_records
         self.mx_records = mx_records
-        # TODO: validate IPs?
         self.ip4_addresses = ip4_addresses
         self.ip6_addresses = ip6_addresses
         self.includes = includes
