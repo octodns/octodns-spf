@@ -19,7 +19,49 @@ class SpfException(RecordException):
         super().__init__(msg)
 
 
-def _build_spf_value(
+def _parse_spf(value):
+    a_records = []
+    mx_records = []
+    ip4_addresses = []
+    ip6_addresses = []
+    includes = []
+    exists = []
+    soft_fail = None
+
+    pieces = value.split()
+    if pieces[0] != 'v=spf1':
+        raise SpfException(f'Unrecognized SPF value: "{value}"')
+
+    for piece in pieces[1:]:
+        if 'all' in piece:
+            soft_fail = piece.startswith('~')
+            continue
+        mechinism, v = piece.split(':')
+        if mechinism == 'a':
+            a_records.append(v)
+        elif mechinism == 'mx':
+            mx_records.append(v)
+        elif mechinism == 'ip4':
+            ip4_addresses.append(v)
+        elif mechinism == 'ip6':
+            ip6_addresses.append(v)
+        elif mechinism == 'include':
+            includes.append(v)
+        elif mechinism == 'exists':
+            exists.append(v)
+
+    return (
+        a_records,
+        mx_records,
+        ip4_addresses,
+        ip6_addresses,
+        includes,
+        exists,
+        soft_fail,
+    )
+
+
+def _build_spf(
     a_records,
     mx_records,
     ip4_addresses,
@@ -61,7 +103,47 @@ def _build_spf_value(
     return buf.getvalue()
 
 
+def _merge_spf(
+    value,
+    a_records,
+    mx_records,
+    ip4_addresses,
+    ip6_addresses,
+    includes,
+    exists,
+    soft_fail,
+):
+    (
+        parsed_a_records,
+        parsed_mx_records,
+        parsed_ip4_addresses,
+        parsed_ip6_addresses,
+        parsed_includes,
+        parsed_exists,
+        parsed_soft_fail,
+    ) = _parse_spf(value)
+
+    parsed_a_records.extend(a_records)
+    parsed_mx_records.extend(mx_records)
+    parsed_ip4_addresses.extend(ip4_addresses)
+    parsed_ip6_addresses.extend(ip6_addresses)
+    parsed_includes.extend(includes)
+    parsed_exists.extend(exists)
+    parsed_soft_fail |= soft_fail
+
+    return _build_spf(
+        parsed_a_records,
+        parsed_mx_records,
+        parsed_ip4_addresses,
+        parsed_ip6_addresses,
+        parsed_includes,
+        parsed_exists,
+        parsed_soft_fail,
+    )
+
+
 class SpfSource(BaseSource):
+    # https://datatracker.ietf.org/doc/html/rfc7208
     SUPPORTS_GEO = False
     SUPPORTS_DYNAMIC = False
     SUPPORTS = set(('TXT'))
@@ -78,11 +160,12 @@ class SpfSource(BaseSource):
         includes=[],
         exists=[],
         soft_fail=False,
+        merging_enabled=False,
         ttl=DEFAULT_TTL,
     ):
         self.log = getLogger(f'SpfSource[{id}]')
         self.log.info(
-            '__init__: id=%s, a_records=%s, mx_records=%s, ip4_addresses=%s, ip6_addresses=%s, includes=%s, exists=[], soft_fail=%s, ttl=%d',
+            '__init__: id=%s, a_records=%s, mx_records=%s, ip4_addresses=%s, ip6_addresses=%s, includes=%s, exists=%s, soft_fail=%s, merging_enabled=%s, ttl=%d',
             id,
             a_records,
             mx_records,
@@ -91,6 +174,7 @@ class SpfSource(BaseSource):
             includes,
             exists,
             soft_fail,
+            merging_enabled,
             ttl,
         )
         super().__init__(id)
@@ -101,11 +185,12 @@ class SpfSource(BaseSource):
         self.ip6_addresses = ip6_addresses
         self.includes = includes
         self.exists = exists
-        self.soft_fall = soft_fail
+        self.soft_fail = soft_fail
 
+        self.merging_enabled = merging_enabled
         self.ttl = ttl
 
-        self.spf_value = _build_spf_value(
+        self.spf_value = _build_spf(
             a_records,
             mx_records,
             ip4_addresses,
@@ -136,19 +221,42 @@ class SpfSource(BaseSource):
                     spf = record
 
         if spf:
-            # TODO: support merging?
-            raise SpfException('Existing SPF value found in TXT record', txt)
+            raise SpfException('Existing SPF value found, cannot coexist', txt)
         elif txt:
             self.log.debug('populate:   found existing TXT record')
-            for value in txt.values:
-                if value.startswith('v=spf'):
-                    # TODO support merging?
+            existing = next(v for v in txt.values if v.startswith('v=spf'))
+            if existing:
+                if not self.merging_enabled:
                     raise SpfException(
-                        'Existing SPF value found in TXT record', txt
+                        'Existing SPF value found in TXT record, merging not enabled',
+                        txt,
                     )
-            self.log.debug('populate:   adding our value, and replacing record')
-            record = txt.copy()
-            record.values.append(self.spf_value)
+                merged = _merge_spf(
+                    existing,
+                    self.a_records,
+                    self.mx_records,
+                    self.ip4_addresses,
+                    self.ip6_addresses,
+                    self.includes,
+                    self.exists,
+                    self.soft_fail,
+                )
+                self.log.info(
+                    'population:   existing value for zone=%s, merging with configured and replacing record',
+                    zone.decoded_name,
+                )
+                record = txt.copy()
+                # replace the existing spf value
+                for i in range(len(record.values)):
+                    if record.values[i].startswith('v=spf'):
+                        record.values[i] = merged
+                        break
+            else:
+                self.log.debug(
+                    'populate:   adding our value and replacing record'
+                )
+                record = txt.copy()
+                record.values.append(self.spf_value)
             # replace with our updated version
             zone.add_record(record, lenient=lenient, replace=True)
         else:
