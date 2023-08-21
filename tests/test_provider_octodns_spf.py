@@ -4,6 +4,9 @@
 
 from unittest import TestCase
 
+from octodns.record import Record
+from octodns.zone import Zone
+
 from octodns_spf import (
     SpfException,
     SpfSource,
@@ -11,6 +14,10 @@ from octodns_spf import (
     _merge_spf,
     _parse_spf,
 )
+
+
+def _find_apex_txt(records):
+    return next(r for r in records if r.name == '' and r._type == 'TXT')
 
 
 class TestSpfSource(TestCase):
@@ -302,6 +309,153 @@ class TestSpfSource(TestCase):
             'v=spf1', _merge_spf('v=spf1', [], [], [], [], [], [], None)
         )
 
-    def test_nothing(self):
-        self.assertTrue(True)
-        SpfSource
+    zone = Zone('unit.tests.', [])
+    no_mail = SpfSource('no-mail')
+    allow_merge = SpfSource('no-merge', merging_enabled=True)
+    has_a = SpfSource(
+        'a-records', a_records=('a.unit.tests',), merging_enabled=True
+    )
+    has_mx = SpfSource(
+        'mx-records', mx_records=('mx.unit.tests',), merging_enabled=True
+    )
+    has_ip4 = SpfSource(
+        'ip4-addresses',
+        ip4_addresses=('1.2.3.4', '5.6.7.8'),
+        merging_enabled=True,
+    )
+    has_ip6 = SpfSource(
+        'ip6-addresses', ip6_addresses=('2606::1',), merging_enabled=True
+    )
+    has_includes = SpfSource(
+        'includes', includes=('include.unit.tests',), merging_enabled=True
+    )
+    has_exists = SpfSource(
+        'exists', exists=('%{ir}.%{l1r+-}._spf.%{d}',), merging_enabled=True
+    )
+    soft_fail = SpfSource('soft-fail', merging_enabled=True)
+    has_ttl = SpfSource('ttl', ttl=42)
+
+    def test_record_details(self):
+        zone = self.zone.copy()
+
+        # add a couple unrelated records
+        apex = Record.new(
+            zone, '', {'ttl': 43, 'type': 'A', 'value': '1.1.1.1'}
+        )
+        zone.add_record(apex)
+        www = Record.new(
+            zone, 'www', {'ttl': 44, 'type': 'CNAME', 'value': zone.name}
+        )
+        zone.add_record(www)
+        txt = Record.new(
+            zone,
+            'txt',
+            {
+                'ttl': 45,
+                'type': 'TXT',
+                'value': 'This is not related and will be ignored',
+            },
+        )
+        zone.add_record(txt)
+
+        self.no_mail.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertTrue(spf)
+        self.assertEqual('', spf.name)
+        self.assertEqual('TXT', spf._type)
+        self.assertEqual(self.no_mail.ttl, spf.ttl)
+        self.assertEqual(['v=spf1 -all'], spf.values)
+
+        # non-default TTL
+        zone = self.zone.copy()
+        self.has_ttl.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        self.assertEqual(self.has_ttl.ttl, spf.ttl)
+
+    def test_has_apex_txt_without_spf(self):
+        zone = self.zone.copy()
+
+        apex_txt = Record.new(
+            zone,
+            '',
+            {
+                'ttl': 43,
+                'type': 'TXT',
+                'values': ['z Hello World 2!', 'Hello World 1!'],
+            },
+        )
+        zone.add_record(apex_txt)
+
+        self.no_mail.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        # appended
+        self.assertEqual(
+            ['Hello World 1!', 'v=spf1 -all', 'z Hello World 2!'], spf.values
+        )
+
+    def test_has_apex_txt_with_spf(self):
+        zone = self.zone.copy()
+
+        apex_txt = Record.new(
+            zone,
+            '',
+            {
+                'ttl': 43,
+                'type': 'TXT',
+                'values': ['Hello World 1!', 'v=spf1 -all', 'z Hello World 2!'],
+            },
+        )
+        zone.add_record(apex_txt)
+
+        self.has_includes.populate(zone)
+        spf = _find_apex_txt(zone.records)
+        # replaced where it existed
+        self.assertEqual(
+            [
+                'Hello World 1!',
+                'v=spf1 include:include.unit.tests -all',
+                'z Hello World 2!',
+            ],
+            spf.values,
+        )
+
+    def test_has_apex_txt_with_spf_no_merging(self):
+        zone = self.zone.copy()
+
+        apex_txt = Record.new(
+            zone,
+            '',
+            {
+                'ttl': 43,
+                'type': 'TXT',
+                'values': ['Hello World 1!', 'v=spf1 -all', 'z Hello World 2!'],
+            },
+        )
+        zone.add_record(apex_txt)
+
+        with self.assertRaises(SpfException) as ctx:
+            self.no_mail.populate(zone)
+        exception = ctx.exception
+        self.assertEqual(
+            'Existing SPF value found in TXT record, merging not enabled',
+            str(exception),
+        )
+        self.assertEqual(apex_txt, exception.record)
+
+    def test_has_spf(self):
+        zone = self.zone.copy()
+
+        apex_spf = Record.new(
+            zone, '', {'ttl': 43, 'type': 'SPF', 'values': ['v=spf1 -all']}
+        )
+        apex_spf.context = 'needle'
+        zone.add_record(apex_spf)
+
+        with self.assertRaises(SpfException) as ctx:
+            self.no_mail.populate(zone)
+        exception = ctx.exception
+        self.assertEqual(
+            'Existing SPF value found, cannot coexist, migrate to TXT, from needle',
+            str(exception),
+        )
+        self.assertEqual(apex_spf, exception.record)

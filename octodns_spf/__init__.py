@@ -17,6 +17,7 @@ class SpfException(RecordException):
         if context:
             msg += f', from {context}'
         super().__init__(msg)
+        self.record = record
 
 
 def _parse_spf(value):
@@ -192,6 +193,7 @@ class SpfSource(BaseSource):
         self.ip6_addresses = ip6_addresses
         self.includes = includes
         self.exists = exists
+
         self.soft_fail = soft_fail
 
         self.merging_enabled = merging_enabled
@@ -228,18 +230,24 @@ class SpfSource(BaseSource):
                     spf = record
 
         if spf:
-            raise SpfException('Existing SPF value found, cannot coexist', txt)
+            raise SpfException(
+                'Existing SPF value found, cannot coexist, migrate to TXT', spf
+            )
         elif txt:
             self.log.debug('populate:   found existing TXT record')
-            existing = next(v for v in txt.values if v.startswith('v=spf'))
-            if existing:
+            # figure out which value is the existing SPF
+            try:
+                i = [v[:6] for v in txt.values].index('v=spf1')
+            except ValueError:
+                i = None
+            if i is not None:
                 if not self.merging_enabled:
                     raise SpfException(
                         'Existing SPF value found in TXT record, merging not enabled',
                         txt,
                     )
                 merged = _merge_spf(
-                    existing,
+                    txt.values[i],
                     self.a_records,
                     self.mx_records,
                     self.ip4_addresses,
@@ -253,17 +261,17 @@ class SpfSource(BaseSource):
                     zone.decoded_name,
                 )
                 record = txt.copy()
-                # replace the existing spf value
-                for i in range(len(record.values)):
-                    if record.values[i].startswith('v=spf'):
-                        record.values[i] = merged
-                        break
+                # replace the existing spf value with the merged one
+                record.values[i] = merged
             else:
                 self.log.debug(
                     'populate:   adding our value and replacing record'
                 )
                 record = txt.copy()
+                # add a new value
                 record.values.append(self.spf_value)
+                # and make sure they're sorted to match Record behavior
+                record.values.sort()
             # replace with our updated version
             zone.add_record(record, lenient=lenient, replace=True)
         else:
