@@ -11,6 +11,7 @@ from octodns_spf import (
     SpfException,
     SpfSource,
     _build_spf,
+    _merge_and_dedup_preserving_order,
     _merge_spf,
     _parse_spf,
 )
@@ -257,6 +258,35 @@ class TestSpfSource(TestCase):
                 [],
                 ['%{ir}.%{l1r+-}._spf.%{d}', 'another.one'],
                 None,
+            ),
+        )
+
+    def test_merge_and_dedup_preserving_order(self):
+        # b is empty
+        self.assertEqual(
+            (3, 2, 1),
+            tuple(_merge_and_dedup_preserving_order((3, 2, 1), tuple())),
+        )
+        # a is empty
+        self.assertEqual(
+            (6, 5, 4),
+            tuple(_merge_and_dedup_preserving_order(tuple(), (6, 5, 4))),
+        )
+        # both are unique
+        self.assertEqual(
+            (3, 2, 1, 6, 5, 4),
+            tuple(_merge_and_dedup_preserving_order((3, 2, 1), (6, 5, 4))),
+        )
+        # both are identical
+        self.assertEqual(
+            (3, 2, 1),
+            tuple(_merge_and_dedup_preserving_order((3, 2, 1), (3, 2, 1))),
+        )
+        # dups in a
+        self.assertEqual(
+            (3, 2, 1, 4),
+            tuple(
+                _merge_and_dedup_preserving_order((3, 3, 2, 2, 1), (4, 2, 1))
             ),
         )
 

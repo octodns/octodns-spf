@@ -107,6 +107,18 @@ def _build_spf(
     return buf.getvalue()
 
 
+def _merge_and_dedup_preserving_order(a, b):
+    seen = set()
+    for x in a:
+        if x not in seen:
+            yield x
+        seen.add(x)
+    for x in b:
+        if x not in seen:
+            yield x
+        seen.add(x)
+
+
 def _merge_spf(
     value,
     a_records,
@@ -127,26 +139,20 @@ def _merge_spf(
         parsed_soft_fail,
     ) = _parse_spf(value)
 
-    parsed_a_records.extend(a_records)
-    parsed_mx_records.extend(mx_records)
-    parsed_ip4_addresses.extend(ip4_addresses)
-    parsed_ip6_addresses.extend(ip6_addresses)
-    parsed_includes.extend(includes)
-    parsed_exists.extend(exists)
     if parsed_soft_fail is None:
-        # just use passed
+        # just use whatever we were passed
         parsed_soft_fail = soft_fail
     else:
-        # merge them, if either is true it's soft
+        # merge them, if either is true (soft) it's soft
         parsed_soft_fail |= soft_fail
 
     return _build_spf(
-        parsed_a_records,
-        parsed_mx_records,
-        parsed_ip4_addresses,
-        parsed_ip6_addresses,
-        parsed_includes,
-        parsed_exists,
+        _merge_and_dedup_preserving_order(parsed_a_records, a_records),
+        _merge_and_dedup_preserving_order(parsed_mx_records, mx_records),
+        _merge_and_dedup_preserving_order(parsed_ip4_addresses, ip4_addresses),
+        _merge_and_dedup_preserving_order(parsed_ip6_addresses, ip6_addresses),
+        _merge_and_dedup_preserving_order(parsed_includes, includes),
+        _merge_and_dedup_preserving_order(parsed_exists, exists),
         parsed_soft_fail,
     )
 
