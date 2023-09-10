@@ -7,9 +7,9 @@ from unittest import TestCase
 from octodns.record import Record
 from octodns.zone import Zone
 
-from octodns_spf import (
+from octodns_spf import SpfSource
+from octodns_spf.source import (
     SpfException,
-    SpfSource,
     _build_spf,
     _merge_and_dedup_preserving_order,
     _merge_spf,
@@ -559,3 +559,7 @@ class TestSpfSource(TestCase):
             'v=spf1 a:a.unit.tests mx:mx.unit.tests ip4:1.2.3.4 ip4:5.6.7.8 ip6:2606::1 include:include.unit.tests exists:%{ir}.%{l1r+-}._spf.%{d} ~all',
             spf.values[0],
         )
+
+    def test_list_zones(self):
+        # hard-coded [] so not much to do here
+        self.assertEqual([], self.no_mail.list_zones())
