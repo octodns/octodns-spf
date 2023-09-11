@@ -108,7 +108,7 @@ Verifies that SPF values in TXT records are valid.
       value: v=spf1 ptr ~all
 ```
 
-#### Real World Example
+#### Real World Examples
 
 A base that disables all email applied to all Zones
 
@@ -118,7 +118,8 @@ providers:
     class: octodns_spf.SpfSource
 ```
 
-A follow on source that will add Google Workspace's recommended config
+A follow on source that will add the recommended values for Google Workspace
+and Salesforce.
 
 ```yaml
 providers:
@@ -135,7 +136,7 @@ providers:
 Per https://support.google.com/a/answer/10684623?hl=en and
 https://help.salesforce.com/s/articleView?id=000382664&type=1
 
-Zones would have one or more of these providers added to their sources list
+Zones would have one or more of these providers added to their sources list.
 
 ```yaml
 zones:
@@ -161,7 +162,10 @@ zones:
   ...
 ```
 
-If instead you prefer to just utilize the SpfDnsLookupProcessor stand alone on records configured in other ways you can do so by enabling the processor.
+If instead you prefer to just utilize the SpfDnsLookupProcessor stand alone on
+records configured in other ways you can do so by enabling the processor.
+Alternatively the processor could be configured in the manager's global
+processors list.
 
 ```yaml
 processors:
@@ -198,4 +202,9 @@ TXT
 
 ### Development
 
-See the [/script/](/script/) directory for some tools to help with the development process. They generally follow the [Script to rule them all](https://github.com/github/scripts-to-rule-them-all) pattern. Most useful is `./script/bootstrap` which will create a venv and install both the runtime and development related requirements. It will also hook up a pre-commit hook that covers most of what's run by CI.
+See the [/script/](/script/) directory for some tools to help with the
+development process. They generally follow the [Script to rule them
+all](https://github.com/github/scripts-to-rule-them-all) pattern. Most useful
+is `./script/bootstrap` which will create a venv and install both the runtime
+and development related requirements. It will also hook up a pre-commit hook
+that covers most of what's run by CI.
