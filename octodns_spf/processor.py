@@ -20,36 +20,6 @@ class SpfDnsLookupException(ProcessorException):
 
 
 class SpfDnsLookupProcessor(BaseProcessor):
-    # TODO: deprecate and move into octodns_spf
-    '''
-    Validate that SPF values in TXT records are valid.
-
-    Example usage:
-
-    processors:
-      spf:
-        class: octodns.processor.spf.SpfDnsLookupProcessor
-
-    zones:
-      example.com.:
-        sources:
-          - config
-        processors:
-          - spf
-        targets:
-          - route53
-
-    The validation can be skipped for specific records by setting the lenient
-    flag, e.g.
-
-    _spf:
-      octodns:
-        lenient: true
-      ttl: 86400
-      type: TXT
-      value: v=spf1 ptr ~all
-    '''
-
     log = getLogger('SpfDnsLookupProcessor')
 
     def __init__(self, name):

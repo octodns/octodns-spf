@@ -32,7 +32,7 @@ octodns-spf==0.0.1
 
 ### Configuration
 
-#### Options &amp; Defaults
+#### SpfSource
 
 ```yaml
 providers:
@@ -78,7 +78,37 @@ providers:
     verify_dns_lookups: false
 ```
 
-#### Read World Example
+#### SpfDnsLookupProcessor
+
+Verifies that SPF values in TXT records are valid.
+
+```yaml
+
+    processors:
+      spf:
+        class: octodns.processor.spf.SpfDnsLookupProcessor
+
+    zones:
+      example.com.:
+        sources:
+          - config
+        processors:
+          - spf
+        targets:
+          - route53
+
+    The validation can be skipped for specific records by setting the lenient
+    flag, e.g.
+
+    _spf:
+      octodns:
+        lenient: true
+      ttl: 86400
+      type: TXT
+      value: v=spf1 ptr ~all
+```
+
+#### Real World Example
 
 A base that disables all email applied to all Zones
 
@@ -99,6 +129,7 @@ providers:
       - _spf.salesforce.com
     soft_fail: true
     merging_enabled: true
+    verify_dns_lookups: true
 ```
 
 Per https://support.google.com/a/answer/10684623?hl=en and
@@ -128,6 +159,35 @@ zones:
       ...
 
   ...
+```
+
+If instead you prefer to just utilize the SpfDnsLookupProcessor stand alone on records configured in other ways you can do so by enabling the processor.
+
+```yaml
+processors:
+  spf:
+    class: octodns.processor.spf.SpfDnsLookupProcessor
+
+zones:
+  example.com.:
+    sources:
+      - config
+    processors:
+      - spf
+    targets:
+      - route53
+```
+
+The validation can be skipped for specific records by setting the lenient
+flag, e.g.
+
+```yaml
+_spf:
+  octodns:
+    lenient: true
+  ttl: 86400
+  type: TXT
+  value: v=spf1 ptr ~all
 ```
 
 ### Support Information
