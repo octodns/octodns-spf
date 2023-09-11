@@ -88,11 +88,11 @@ class SpfDnsLookupProcessor(BaseProcessor):
 
         return values
 
-    def _check_dns_lookups(
+    def check_dns_lookups(
         self, fqdn: str, values: List[str], lookups: int = 0
     ) -> int:
         self.log.debug(
-            f"_check_dns_lookups: record={fqdn} values={values} lookups={lookups}"
+            f"check_dns_lookups: record={fqdn} values={values} lookups={lookups}"
         )
 
         spf = self._get_spf_from_txt_values(fqdn, values)
@@ -122,7 +122,7 @@ class SpfDnsLookupProcessor(BaseProcessor):
                 domain = term[len('include:') :]
                 answer = dns.resolver.resolve(domain, 'TXT')
                 answer_values = self._process_answer(answer)
-                lookups = self._check_dns_lookups(fqdn, answer_values, lookups)
+                lookups = self.check_dns_lookups(fqdn, answer_values, lookups)
 
         return lookups
 
@@ -134,6 +134,6 @@ class SpfDnsLookupProcessor(BaseProcessor):
             if record._octodns.get('lenient'):
                 continue
 
-            self._check_dns_lookups(record.fqdn, record.values, 0)
+            self.check_dns_lookups(record.fqdn, record.values, 0)
 
         return zone

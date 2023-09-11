@@ -221,7 +221,7 @@ class SpfSource(BaseSource):
         self.log.debug('__init__:   spf=%s', self.spf_value)
 
         if verify_dns_lookups:
-            SpfDnsLookupProcessor(self.id)._check_dns_lookups(
+            SpfDnsLookupProcessor(self.id).check_dns_lookups(
                 f'<{self.id}>', [self.spf_value]
             )
 
