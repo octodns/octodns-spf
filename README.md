@@ -38,6 +38,7 @@ octodns-spf==0.0.1
 providers:
   spf-google:
     class: octodns_spf.SpfSource
+
     # See https://datatracker.ietf.org/doc/html/rfc7208#section-5 for the
     # details of the various mechinisms below. Each is an array of zero or more
     # items to be added to the SPF record. Mechinisms are specified in the order
@@ -49,6 +50,7 @@ providers:
     ip6_addresses: []
     includes: []
     exists: []
+
     # The "all" value to be appended onto the SPF value, there's not a clear
     # consensus on best practice here, but there does seem to be a slight leaning
     # towards hard-failing, "-all". Soft-fail can be enabled by setting this
@@ -57,13 +59,23 @@ providers:
     # See https://news.ycombinator.com/item?id=34344590 for some discussion
     # (default: false, hard fail)
     soft_fail: false
+
     # Wether or not this provider will merge it's configuration with any
     # prexisting SPF value in an APEX TXT record. If `false` an error will be
     # thrown. If `true` the existing values, wether from a previous SpfSource or
     # any other provider, will be preserved and this provider's config will be
     # appended onto each mechinism.
     merging_enabled: false
+
+    # The TTL of the TXT record when created by SpfSource. If instead a value
+    # is added to an existing record the TTL will be left as-is.
+    # (default: 3600)
     ttl: 3600
+
+    # Enable verification of the SPF value, specifically evaluating the number
+    # of DNS lookups required to fully resolve the value.
+    # (default: false)
+    verify_dns_lookups: false
 ```
 
 #### Read World Example
