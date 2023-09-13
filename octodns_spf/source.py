@@ -10,8 +10,6 @@ from octodns.source.base import BaseSource
 
 from .processor import SpfDnsLookupProcessor
 
-__VERSION__ = '0.0.1'
-
 
 class SpfException(RecordException):
     def __init__(self, msg, record=None):
