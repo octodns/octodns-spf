@@ -8,6 +8,8 @@ from logging import getLogger
 from octodns.record import Record, RecordException
 from octodns.source.base import BaseSource
 
+from .processor import SpfDnsLookupProcessor
+
 __VERSION__ = '0.0.1'
 
 
@@ -177,10 +179,11 @@ class SpfSource(BaseSource):
         soft_fail=False,
         merging_enabled=False,
         ttl=DEFAULT_TTL,
+        verify_dns_lookups=False,
     ):
         self.log = getLogger(f'SpfSource[{id}]')
         self.log.info(
-            '__init__: id=%s, a_records=%s, mx_records=%s, ip4_addresses=%s, ip6_addresses=%s, includes=%s, exists=%s, soft_fail=%s, merging_enabled=%s, ttl=%d',
+            '__init__: id=%s, a_records=%s, mx_records=%s, ip4_addresses=%s, ip6_addresses=%s, includes=%s, exists=%s, soft_fail=%s, merging_enabled=%s, ttl=%d, verify_dns_lookups=%s',
             id,
             a_records,
             mx_records,
@@ -191,6 +194,7 @@ class SpfSource(BaseSource):
             soft_fail,
             merging_enabled,
             ttl,
+            verify_dns_lookups,
         )
         super().__init__(id)
         self.a_records = a_records
@@ -215,6 +219,11 @@ class SpfSource(BaseSource):
             soft_fail,
         )
         self.log.debug('__init__:   spf=%s', self.spf_value)
+
+        if verify_dns_lookups:
+            SpfDnsLookupProcessor(self.id).check_dns_lookups(
+                f'<{self.id}>', [self.spf_value]
+            )
 
     def list_zones(self):
         # we're a specialized provider and never originate any zones ourselves.

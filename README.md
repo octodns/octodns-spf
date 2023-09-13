@@ -32,12 +32,13 @@ octodns-spf==0.0.1
 
 ### Configuration
 
-#### Options &amp; Defaults
+#### SpfSource
 
 ```yaml
 providers:
   spf-google:
     class: octodns_spf.SpfSource
+
     # See https://datatracker.ietf.org/doc/html/rfc7208#section-5 for the
     # details of the various mechinisms below. Each is an array of zero or more
     # items to be added to the SPF record. Mechinisms are specified in the order
@@ -49,6 +50,7 @@ providers:
     ip6_addresses: []
     includes: []
     exists: []
+
     # The "all" value to be appended onto the SPF value, there's not a clear
     # consensus on best practice here, but there does seem to be a slight leaning
     # towards hard-failing, "-all". Soft-fail can be enabled by setting this
@@ -57,16 +59,56 @@ providers:
     # See https://news.ycombinator.com/item?id=34344590 for some discussion
     # (default: false, hard fail)
     soft_fail: false
+
     # Wether or not this provider will merge it's configuration with any
     # prexisting SPF value in an APEX TXT record. If `false` an error will be
     # thrown. If `true` the existing values, wether from a previous SpfSource or
     # any other provider, will be preserved and this provider's config will be
     # appended onto each mechinism.
     merging_enabled: false
+
+    # The TTL of the TXT record when created by SpfSource. If instead a value
+    # is added to an existing record the TTL will be left as-is.
+    # (default: 3600)
     ttl: 3600
+
+    # Enable verification of the SPF value, specifically evaluating the number
+    # of DNS lookups required to fully resolve the value.
+    # (default: false)
+    verify_dns_lookups: false
 ```
 
-#### Read World Example
+#### SpfDnsLookupProcessor
+
+Verifies that SPF values in TXT records are valid.
+
+```yaml
+
+    processors:
+      spf:
+        class: octodns.processor.spf.SpfDnsLookupProcessor
+
+    zones:
+      example.com.:
+        sources:
+          - config
+        processors:
+          - spf
+        targets:
+          - route53
+
+    The validation can be skipped for specific records by setting the lenient
+    flag, e.g.
+
+    _spf:
+      octodns:
+        lenient: true
+      ttl: 86400
+      type: TXT
+      value: v=spf1 ptr ~all
+```
+
+#### Real World Examples
 
 A base that disables all email applied to all Zones
 
@@ -76,7 +118,8 @@ providers:
     class: octodns_spf.SpfSource
 ```
 
-A follow on source that will add Google Workspace's recommended config
+A follow on source that will add the recommended values for Google Workspace
+and Salesforce.
 
 ```yaml
 providers:
@@ -87,12 +130,13 @@ providers:
       - _spf.salesforce.com
     soft_fail: true
     merging_enabled: true
+    verify_dns_lookups: true
 ```
 
 Per https://support.google.com/a/answer/10684623?hl=en and
 https://help.salesforce.com/s/articleView?id=000382664&type=1
 
-Zones would have one or more of these providers added to their sources list
+Zones would have one or more of these providers added to their sources list.
 
 ```yaml
 zones:
@@ -118,6 +162,38 @@ zones:
   ...
 ```
 
+If instead you prefer to just utilize the SpfDnsLookupProcessor stand alone on
+records configured in other ways you can do so by enabling the processor.
+Alternatively the processor could be configured in the manager's global
+processors list.
+
+```yaml
+processors:
+  spf:
+    class: octodns.processor.spf.SpfDnsLookupProcessor
+
+zones:
+  example.com.:
+    sources:
+      - config
+    processors:
+      - spf
+    targets:
+      - route53
+```
+
+The validation can be skipped for specific records by setting the lenient
+flag, e.g.
+
+```yaml
+_spf:
+  octodns:
+    lenient: true
+  ttl: 86400
+  type: TXT
+  value: v=spf1 ptr ~all
+```
+
 ### Support Information
 
 #### Records
@@ -126,4 +202,9 @@ TXT
 
 ### Development
 
-See the [/script/](/script/) directory for some tools to help with the development process. They generally follow the [Script to rule them all](https://github.com/github/scripts-to-rule-them-all) pattern. Most useful is `./script/bootstrap` which will create a venv and install both the runtime and development related requirements. It will also hook up a pre-commit hook that covers most of what's run by CI.
+See the [/script/](/script/) directory for some tools to help with the
+development process. They generally follow the [Script to rule them
+all](https://github.com/github/scripts-to-rule-them-all) pattern. Most useful
+is `./script/bootstrap` which will create a venv and install both the runtime
+and development related requirements. It will also hook up a pre-commit hook
+that covers most of what's run by CI.

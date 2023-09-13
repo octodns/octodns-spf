@@ -8,6 +8,7 @@ from octodns.record import Record
 from octodns.zone import Zone
 
 from octodns_spf import SpfSource
+from octodns_spf.processor import SpfDnsLookupException
 from octodns_spf.source import (
     SpfException,
     _build_spf,
@@ -563,3 +564,16 @@ class TestSpfSource(TestCase):
     def test_list_zones(self):
         # hard-coded [] so not much to do here
         self.assertEqual([], self.no_mail.list_zones())
+
+    def test_verify_dns_lookups(self):
+        a_records = [f'a_{i}.unit.tests.' for i in range(11)]
+
+        # too many lookups, but no verify so we're good
+        source = SpfSource('test', a_records=a_records)
+        self.assertTrue(source)
+
+        # too many lookups, verify is enabled so should blow up
+        with self.assertRaises(SpfDnsLookupException):
+            source = SpfSource(
+                'test', a_records=a_records, verify_dns_lookups=True
+            )
