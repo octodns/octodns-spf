@@ -22,9 +22,9 @@ class SpfDnsLookupException(ProcessorException):
 class SpfDnsLookupProcessor(BaseProcessor):
     log = getLogger('SpfDnsLookupProcessor')
 
-    def __init__(self, name):
-        self.log.debug(f"SpfDnsLookupProcessor: {name}")
-        super().__init__(name)
+    def __init__(self, id):
+        self.log.debug('__init__:')
+        super().__init__(id)
 
     def _get_spf_from_txt_values(
         self, fqdn: str, values: List[str]
