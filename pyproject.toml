@@ -12,4 +12,7 @@ sections="FUTURE,STDLIB,THIRDPARTY,OCTODNS,FIRSTPARTY,LOCALFOLDER"
 
 [tool.pytest.ini_options]
 log_level = 'DEBUG'
+filterwarnings = [
+    'error',
+]
 pythonpath = "."
