@@ -14,5 +14,7 @@ sections="FUTURE,STDLIB,THIRDPARTY,OCTODNS,FIRSTPARTY,LOCALFOLDER"
 log_level = 'DEBUG'
 filterwarnings = [
     'error',
+    # TODO: remove once octodns 2.0 has been released
+    'ignore:.*DEPRECATED.*2.0',
 ]
 pythonpath = "."
