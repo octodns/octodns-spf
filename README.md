@@ -86,7 +86,7 @@ Verifies that SPF values in TXT records are valid.
 
     processors:
       spf:
-        class: octodns.processor.spf.SpfDnsLookupProcessor
+        class: octodns_spf.processor.spf.SpfDnsLookupProcessor
 
     zones:
       example.com.:
@@ -170,7 +170,7 @@ processors list.
 ```yaml
 processors:
   spf:
-    class: octodns.processor.spf.SpfDnsLookupProcessor
+    class: octodns_spf.processor.spf.SpfDnsLookupProcessor
 
 zones:
   example.com.:
