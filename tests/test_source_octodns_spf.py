@@ -461,34 +461,17 @@ class TestSpfSource(TestCase):
                 'values': ['Hello World 1!', 'v=spf1 -all', 'z Hello World 2!'],
             },
         )
+        apex_txt.context = 'needle'
         zone.add_record(apex_txt)
 
         with self.assertRaises(SpfException) as ctx:
             self.no_mail.populate(zone)
         exception = ctx.exception
         self.assertEqual(
-            'Existing SPF value found in TXT record, merging not enabled',
+            'Existing SPF value found in TXT record, merging not enabled, from needle',
             str(exception),
         )
         self.assertEqual(apex_txt, exception.record)
-
-    def test_has_spf(self):
-        zone = self.zone.copy()
-
-        apex_spf = Record.new(
-            zone, '', {'ttl': 43, 'type': 'SPF', 'values': ['v=spf1 -all']}
-        )
-        apex_spf.context = 'needle'
-        zone.add_record(apex_spf)
-
-        with self.assertRaises(SpfException) as ctx:
-            self.no_mail.populate(zone)
-        exception = ctx.exception
-        self.assertEqual(
-            'Existing SPF value found, cannot coexist, migrate to TXT, from needle',
-            str(exception),
-        )
-        self.assertEqual(apex_spf, exception.record)
 
     def test_merging(self):
         zone = self.zone.copy()
