@@ -237,20 +237,13 @@ class SpfSource(BaseSource):
 
         before = len(zone.records)
 
-        spf = None
         txt = None
         for record in zone.records:
             if record.name == '':
                 if record._type == 'TXT':
                     txt = record
-                elif record._type == 'SPF':
-                    spf = record
 
-        if spf:
-            raise SpfException(
-                'Existing SPF value found, cannot coexist, migrate to TXT', spf
-            )
-        elif txt:
+        if txt:
             self.log.debug('populate:   found existing TXT record')
             # figure out which value is the existing SPF
             try:

@@ -101,7 +101,7 @@ class SpfDnsLookupProcessor(BaseProcessor):
             if record._type != 'TXT':
                 continue
 
-            if record._octodns.get('lenient'):
+            if record.octodns.get('lenient'):
                 continue
 
             self.check_dns_lookups(record.fqdn, record.values, 0)
