@@ -5,7 +5,4 @@ SCRIPT_PATH="$( dirname -- "$( readlink -f -- "${0}"; )"; )"
 # Activate OctoDNS Python venv
 source "${SCRIPT_PATH}/common.sh"
 
-# TODO: ensure any common env var secrets have been cleared
-export TODO_ACCESS_KEY_ID=
-
 pytest --disable-network "$@"
